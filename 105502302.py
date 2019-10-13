@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 #參數
 learn_rate = 0.2
@@ -18,10 +19,17 @@ best_w = []
 final_ac = 0.0
 
 
-def data_input():
+def data_input(path):
      #read file
-     f = open(r'dataset/2Hcircle1.txt')
-     
+     file_c = False
+     while(file_c == False):
+          try:
+               f = open(path)
+               file_c = True          
+          except:
+               print("can't find file")
+               return False
+          
      for line in f:
           #repace '\n' to ''
           line = line.replace('\n', '')
@@ -41,7 +49,7 @@ def data_input():
           data.append(data_x)
           sol.append(data_y)
 
-          #process different class
+          #紀錄class label
           if len(sol_class) == 0:
                sol_class.append(data_y)
           else:
@@ -53,8 +61,9 @@ def data_input():
                if(ch == True):
                     sol_class.append(data_y)
      f.close()
-     
-def paint(data, sol):
+   
+  
+def paint(data, sol, status ):
      x = []
      y = []
      x2 = []
@@ -70,21 +79,51 @@ def paint(data, sol):
                     y2.append(data[i][2])
      max_x = 0
      min_x = 0
-
+     max_y = 0
+     min_y = 0
+     # 座標最大 最小
      if(len(x) != 0 and len(x2)!= 0):
           max_x = max([max(x), max(x2)])
           min_x = min([min(x), min(x2)])
      elif(len(x) != 0):
-
           max_x = max(x)
           min_x = min(x)
      elif(len(x2)!= 0):
           max_x = max(x2)
           min_x = min(x2)
+
+
+     if(len(y) != 0 and len(y2)!= 0):
+          max_y = max([max(y), max(y2)])
+          min_y = min([min(y), min(y2)])
+     elif(len(y) != 0):
+          max_y = max(y)
+          min_y = min(y)
+     elif(len(y2)!= 0):
+          max_y = max(y2)
+          min_y = min(y2)
     
      plt.plot(x, y ,'r^')
      plt.plot(x2, y2 ,'gs')
-     plt.plot([max_x, min_x], [(best_w[0] - best_w[1] * max_x)/best_w[2], (best_w[0] - best_w[1] * min_x)/best_w[2]] ,'y--')
+     if(best_w[2] != 0):
+          plt.plot([max_x, min_x], [(best_w[0] - best_w[1] * max_x)/best_w[2], (best_w[0] - best_w[1] * min_x)/best_w[2]] ,'y--')
+     else:
+          plt.plot([max_x, min_x], [max_y, min_y] ,'y--')
+               
+
+     #存檔的path
+     path_spilt = path.split('\\')
+     path_spilt = path.split('/')
+     name = (path_spilt[len(path_spilt)-1].split('.'))[0]
+     try:
+          if(status == 0):
+               plt.savefig('dataset/image/' + name + '_train_data.jpg')
+          else:
+               plt.savefig('dataset/image/' + name + '_all_data.jpg')
+     except:
+          print("--------*******************************************  -----")
+          print("--------   can't find path, path is dataset/image/   -----")
+          print("--------*******************************************  -----")
      plt.show()
 
 
@@ -121,7 +160,15 @@ def train():
      global final_ac
      
      #初始weight
-     w = [-1,0, 1]
+    
+     w = [-1]
+     #初始weight
+     if(len(sol_class) > 2):
+          for i in range(len(sol_class)):
+               w.append(random.random())
+     else:
+          w = [-1,1, 0]
+          
      data_train = []
      data_test = []
      sol_train = []
@@ -140,7 +187,7 @@ def train():
                sum = 0
                for k in range(len(data_train[j])):
                     sum = sum + data_train[j][k] * w[k]
-               #print(sol_train)
+               
               
                if(sum >= 0):
                     predict = sol_class[0]
@@ -155,6 +202,23 @@ def train():
               
                     
           #evalute
+          count = 0
+          for j in range(len(data_train)):
+               sum = 0
+               for k in range(len(data_train[j])):
+                    sum = sum + data_train[j][k] * w[k]
+               
+               
+               if(sum >= 0):
+                    predict = sol_class[0]
+               if(sum < 0):
+                    predict = sol_class[1]
+               if(predict == sol[j]):
+                    count = count + 1
+          print("epoch: " + str(i+1) + "\ntrain accuracy:", count/len(data_train))
+
+
+                    
           count = 0
           for j in range(len(data_test)):
                sum = 0
@@ -183,7 +247,7 @@ def train():
           
           
   
-          print("epoch: " + str(i+1) + "\naccuracy:", str(ac))
+          print("test accuracy:", str(ac))
           
           count = 0
           for j in range(len(data)):
@@ -201,57 +265,60 @@ def train():
                
           final_ac = count/len(data)
           print("total_accuracy", final_ac)
-          if(best_ac >= accuracy):  
+          if(best_ac >= accuracy):
+               paint(data_train, sol_train, 0)
                return  
-          
-     paint(data_train, sol_train)
+
+     if(len(sol_class) <= 2):     
+          paint(data_train, sol_train, 0)
          
           
 if __name__ == '__main__':
-     
-     c1 = False
-     c2 = False
-     c3 = False
      while(True):
-          if(c1 == False):
-               try:
-                    learn_rate = float(input("學習率: "))
-                    c1 = True
-               except:
-                    print("學習率輸入錯誤")
+          data = []
+          sol = []
+          sol_class = []
+          best_ac = 0.0
+          best_w = []
+          final_ac = 0.0
+          path = str(input("檔案路徑: "))
+          c1 = False
+          c2 = False
+          c3 = False
+          while(True):
+               if(c1 == False):
+                    try:
+                         learn_rate = float(input("type:float learning_rate: "))
+                         break
+                    except:
+                         print("learning_rate error")
+          while(True):
+               if(c2 == False):
+                    try:
+                         epoch = int(input("type:int epoch: "))
+                         break
+                    except:
+                         print("epoch error")
+          while(True):
+               if(c3 == False):
+                    try:
+                         accuracy = float(input("type:float accuracy: "))
+                         break
+                    except:
+                         print("accuracy error")
 
-          if(c2 == False):
-               try:
-                    epoch = int(input("請輸入正整數 epoch: "))
-                    c2 = True
-               except:
-                    print("epoch輸入錯誤")
+                
+          if(data_input(path) != False):
+               train()
+               print("test data  accuracy: " + str(best_ac),)
+               print("wieght ", end = "")
+               print(best_w)
 
-          if(c3 == False):
-               try:
-                    accuracy = float(input("請輸入符點數 accuracy: "))
-                    c3 = True
-               except:
-                    print("accuracy輸入錯誤")
-
-          if(c1 == True and c2 == True and c3 == True):
-               break
-     data_input()
-     train()
-     
-     
-     print("利用test data最後的accuracy: " + str(best_ac),)
-     print("利用test data最後的: ", end = "")
-     print(best_w)
-
-     print("利用全部 data最後的accuracy: ", final_ac)
-
-     paint(data, sol)
-     
-     
-
-     
-    
-
-
-
+               print("all data accuracy: ", final_ac)
+               if(len(sol_class) <= 2):     
+                    paint(data, sol, 1)
+          print("")
+          
+          status = int(input("input->1 continue, input->2 stop: "))
+          if(status == 2):
+               sys.exit()
